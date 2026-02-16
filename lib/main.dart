@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'screens/login_screen.dart';
-// пока заглушка для home
-import 'screens/home_screen.dart' as placeholder; // создадим позже
+import 'screens/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,13 +35,13 @@ class MyApp extends StatelessWidget {
             );
           }
           if (snapshot.hasData && snapshot.data == true) {
-            return const placeholder.HomeScreen(); // заглушка
+            return const HomeScreen();
           }
           return const LoginScreen();
         },
       ),
       routes: {
-        '/home': (context) => const placeholder.HomeScreen(),
+        '/home': (context) => const HomeScreen(),
       },
     );
   }
