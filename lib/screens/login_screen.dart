@@ -24,8 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final response = await http.post(
-        Uri.parse(
-            'http://192.168.1.145:5000/login'), // ← замени на свой IP и порт
+        Uri.parse('http://192.168.1.145:5000/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': _emailController.text.trim(),
@@ -36,29 +35,27 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'] as String?;
-
         if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', token);
 
           if (!mounted) return;
-          // Переходим на главный экран
           Navigator.pushReplacementNamed(context, '/home');
         } else {
           setState(() {
-            _errorMessage = 'Токен не получен';
+            _errorMessage = 'Token not received';
           });
         }
       } else {
         final data = jsonDecode(response.body);
         setState(() {
           _errorMessage =
-              data['error'] ?? 'Ошибка входа (${response.statusCode})';
+              data['error'] ?? 'Login error (${response.statusCode})';
         });
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Нет соединения с сервером\n$e';
+        _errorMessage = 'No connection to server\n$e';
       });
     } finally {
       setState(() {
@@ -70,9 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Вход'),
-      ),
+      appBar: AppBar(title: const Text('Login')),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -94,7 +89,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Пароль',
+                  labelText: 'Password',
                   border: OutlineInputBorder(),
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
@@ -121,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2.5),
                         )
-                      : const Text('Войти', style: TextStyle(fontSize: 16)),
+                      : const Text('Sign In', style: TextStyle(fontSize: 16)),
                 ),
               ),
             ],
