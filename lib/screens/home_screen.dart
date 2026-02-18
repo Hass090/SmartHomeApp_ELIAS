@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'control_screen.dart';
+import 'history_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -264,9 +265,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('History screen under development'),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HistoryScreen(),
                           ),
                         );
                       },
