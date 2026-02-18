@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'control_screen.dart';
 import 'history_screen.dart';
+import '../services/mqtt_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -14,27 +17,42 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Map<String, dynamic> _status = {};
+  Map<String, dynamic> _httpStatus = {};
   bool _isLoading = false;
   String? _errorMessage;
   Timer? _timer;
 
+  late MqttService _mqttService;
+
   @override
   void initState() {
     super.initState();
+    _mqttService = MqttService();
+    _mqttService.addListener(_updateUIFromMqtt);
+
     _fetchStatus();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _fetchStatus());
+    _timer = Timer.periodic(const Duration(seconds: 15), (_) => _fetchStatus());
+
+    debugPrint('MQTT service initialized');
+  }
+
+  void _updateUIFromMqtt() {
+    setState(() {
+
+    });
   }
 
   Future<void> _fetchStatus() async {
-    if (_status.isEmpty) {
+    if (_httpStatus.isEmpty) {
       setState(() => _isLoading = true);
     }
+
     setState(() => _errorMessage = null);
 
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
+
       if (token == null) {
         throw Exception('No token found. Please login again.');
       }
@@ -49,9 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final decoded = jsonDecode(response.body);
-        debugPrint('Received status: $decoded');
+        debugPrint('HTTP status: $decoded');
         setState(() {
-          _status = decoded;
+          _httpStatus = decoded;
           _isLoading = false;
         });
       } else if (response.statusCode == 401) {
@@ -75,32 +93,59 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _mqttService.removeListener(_updateUIFromMqtt);
+    _mqttService.dispose();
     _timer?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Parse values safely
-    final temperature = (_status['temperature'] as num?)?.toDouble();
-    final humidity = (_status['humidity'] as num?)?.toDouble();
-    final pressure = (_status['pressure'] as num?)?.toDouble();
-    final doorRaw = _status['door'] as String?;
+    final tempStr =
+        _mqttService.latestValues['smarthome/pico/environment/temperature'] ??
+        (_httpStatus['temperature']?.toStringAsFixed(1) ?? '--');
+    final humStr =
+        _mqttService.latestValues['smarthome/pico/environment/humidity'] ??
+        (_httpStatus['humidity']?.toStringAsFixed(0) ?? '--');
+    final pressStr =
+        _mqttService.latestValues['smarthome/pico/environment/pressure'] ??
+        (_httpStatus['pressure']?.toStringAsFixed(0) ?? '--');
+
+    final doorRaw =
+        _mqttService.latestValues['smarthome/pico/security/door'] ??
+        _httpStatus['door'] as String?;
     final doorLower = doorRaw?.toLowerCase();
     final isDoorOpen = doorLower == 'open' || doorRaw == 'OPEN';
     final doorDisplay = isDoorOpen ? 'Open' : 'Closed';
     final doorColor = isDoorOpen ? Colors.orange : Colors.green;
-    final isMotionDetected = _status['motion_detected'] == true;
-    final lastAccess = _status['last_access'] as String?;
+
+    final motionRaw =
+        _mqttService.latestValues['smarthome/pico/security/motion'];
+    final isMotionDetected =
+        motionRaw == 'DETECTED' || _httpStatus['motion_detected'] == true;
+
+    final lastAccess = _httpStatus['last_access'] as String?;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Smart Home'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: _mqttService.isConnected ? Colors.green : Colors.red,
+              ),
+            ),
+          ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchStatus),
         ],
       ),
-      body: _isLoading && _status.isEmpty
+      body:
+          _isLoading && _httpStatus.isEmpty && _mqttService.latestValues.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
           ? Center(
@@ -142,23 +187,17 @@ class _HomeScreenState extends State<HomeScreen> {
                                 _buildInfoItem(
                                   icon: Icons.thermostat,
                                   label: 'Temperature',
-                                  value: temperature != null
-                                      ? '${temperature.toStringAsFixed(1)} °C'
-                                      : '--',
+                                  value: '$tempStr °C',
                                 ),
                                 _buildInfoItem(
                                   icon: Icons.water_drop,
                                   label: 'Humidity',
-                                  value: humidity != null
-                                      ? '${humidity.toStringAsFixed(0)} %'
-                                      : '--',
+                                  value: '$humStr %',
                                 ),
                                 _buildInfoItem(
                                   icon: Icons.compress,
                                   label: 'Pressure',
-                                  value: pressure != null
-                                      ? '${pressure.toStringAsFixed(0)} hPa'
-                                      : '--',
+                                  value: '$pressStr hPa',
                                 ),
                               ],
                             ),
@@ -166,6 +205,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
 
                     // Security Card
@@ -184,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                             const SizedBox(height: 12),
+
                             // Door
                             ListTile(
                               leading: Icon(
@@ -200,6 +241,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
+
                             // Motion
                             ListTile(
                               leading: Icon(
@@ -217,21 +259,22 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ),
                               ),
                             ),
+
                             // Last Access
-                            if (lastAccess != null) ...[
+                            if (lastAccess != null)
                               ListTile(
                                 leading: const Icon(Icons.login, size: 36),
                                 title: const Text('Last Access'),
                                 subtitle: Text(lastAccess),
                               ),
-                            ],
                           ],
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
 
-                    // Door Control Button
+                    // Buttons
                     ElevatedButton.icon(
                       icon: const Icon(Icons.door_sliding),
                       label: const Text('Door Control'),
@@ -252,9 +295,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         );
                       },
                     ),
+
                     const SizedBox(height: 16),
 
-                    // History Button
                     ElevatedButton.icon(
                       icon: const Icon(Icons.history),
                       label: const Text('Event History'),
