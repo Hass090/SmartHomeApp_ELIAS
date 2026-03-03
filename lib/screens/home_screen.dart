@@ -104,7 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart Home'),
+        title: const Text('Smart Home ELIAS'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -121,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Настройки',
+            tooltip: 'Settings',
             onPressed: () {
               Navigator.push(
                 context,
