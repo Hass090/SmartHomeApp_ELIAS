@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'control_screen.dart';
 import 'history_screen.dart';
+import 'settings_screen.dart';
 import '../services/mqtt_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -89,20 +90,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // === ИСПРАВЛЕННЫЕ СТРОКИ (было latestValues) ===
     final tempStr = _mqttService.temperature;
     final humStr = _mqttService.humidity;
     final pressStr = _mqttService.pressure;
-
     final doorRaw = _mqttService.doorStatus;
     final doorLower = doorRaw.toLowerCase();
     final isDoorOpen = doorLower == 'open' || doorRaw == 'OPEN';
     final doorDisplay = isDoorOpen ? 'Open' : 'Closed';
     final doorColor = isDoorOpen ? Colors.orange : Colors.green;
-
-    final isMotionDetected = _mqttService.motionDetected || _httpStatus['motion_detected'] == true;
+    final isMotionDetected =
+        _mqttService.motionDetected || _httpStatus['motion_detected'] == true;
     final lastAccess = _httpStatus['last_access'] as String?;
-    // ===============================================
 
     return Scaffold(
       appBar: AppBar(
@@ -120,172 +118,180 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchStatus),
+
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: 'Настройки',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              );
+            },
+          ),
         ],
       ),
-      body: _isLoading && _httpStatus.isEmpty && _mqttService.temperature == '--'
+      body:
+          _isLoading && _httpStatus.isEmpty && _mqttService.temperature == '--'
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.red, fontSize: 18),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _fetchStatus,
-                  child: SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Current Conditions Card
-                        Card(
-                          elevation: 4,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              children: [
-                                const Text(
-                                  'Current Conditions',
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _buildInfoItem(
-                                      icon: Icons.thermostat,
-                                      label: 'Temperature',
-                                      value: '$tempStr °C',
-                                    ),
-                                    _buildInfoItem(
-                                      icon: Icons.water_drop,
-                                      label: 'Humidity',
-                                      value: '$humStr %',
-                                    ),
-                                    _buildInfoItem(
-                                      icon: Icons.compress,
-                                      label: 'Pressure',
-                                      value: '$pressStr hPa',
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        // Security Card
-                        Card(
-                          elevation: 4,
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Security',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
-                                // Door
-                                ListTile(
-                                  leading: Icon(
-                                    Icons.door_front_door,
-                                    color: doorColor,
-                                    size: 36,
-                                  ),
-                                  title: const Text('Door'),
-                                  subtitle: Text(
-                                    doorDisplay,
-                                    style: TextStyle(
-                                      color: doorColor,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                                // Motion
-                                ListTile(
-                                  leading: Icon(
-                                    Icons.sensors,
-                                    color: isMotionDetected ? Colors.red : Colors.grey,
-                                    size: 36,
-                                  ),
-                                  title: const Text('Motion'),
-                                  subtitle: Text(
-                                    isMotionDetected ? 'Detected' : 'No motion',
-                                    style: TextStyle(
-                                      color: isMotionDetected ? Colors.red : null,
-                                    ),
-                                  ),
-                                ),
-                                // Last Access
-                                if (lastAccess != null)
-                                  ListTile(
-                                    leading: const Icon(Icons.login, size: 36),
-                                    title: const Text('Last Access'),
-                                    subtitle: Text(lastAccess),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        // Buttons
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.door_sliding),
-                          label: const Text('Door Control'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue[700],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ControlScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.history),
-                          label: const Text('Event History'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const HistoryScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.red, fontSize: 18),
+                  textAlign: TextAlign.center,
                 ),
+              ),
+            )
+          : RefreshIndicator(
+              onRefresh: _fetchStatus,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Card(
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'Current Conditions',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _buildInfoItem(
+                                  icon: Icons.thermostat,
+                                  label: 'Temperature',
+                                  value: '$tempStr °C',
+                                ),
+                                _buildInfoItem(
+                                  icon: Icons.water_drop,
+                                  label: 'Humidity',
+                                  value: '$humStr %',
+                                ),
+                                _buildInfoItem(
+                                  icon: Icons.compress,
+                                  label: 'Pressure',
+                                  value: '$pressStr hPa',
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    Card(
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Security',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ListTile(
+                              leading: Icon(
+                                Icons.door_front_door,
+                                color: doorColor,
+                                size: 36,
+                              ),
+                              title: const Text('Door'),
+                              subtitle: Text(
+                                doorDisplay,
+                                style: TextStyle(
+                                  color: doorColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            ListTile(
+                              leading: Icon(
+                                Icons.sensors,
+                                color: isMotionDetected
+                                    ? Colors.red
+                                    : Colors.grey,
+                                size: 36,
+                              ),
+                              title: const Text('Motion'),
+                              subtitle: Text(
+                                isMotionDetected ? 'Detected' : 'No motion',
+                                style: TextStyle(
+                                  color: isMotionDetected ? Colors.red : null,
+                                ),
+                              ),
+                            ),
+                            if (lastAccess != null)
+                              ListTile(
+                                leading: const Icon(Icons.login, size: 36),
+                                title: const Text('Last Access'),
+                                subtitle: Text(lastAccess),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.door_sliding),
+                      label: const Text('Door Control'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[700],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const ControlScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.history),
+                      label: const Text('Event History'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HistoryScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
