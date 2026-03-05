@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -35,22 +37,52 @@ class _LoginScreenState extends State<LoginScreen> {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'] as String?;
+
         if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', token);
 
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/home');
+          final fcmToken = await FirebaseMessaging.instance.getToken();
+          if (fcmToken != null) {
+            try {
+              final tokenResponse = await http.post(
+                Uri.parse('http://192.168.1.145:5000/register_token'),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': 'Bearer $token',
+                },
+                body: jsonEncode({
+                  'token': fcmToken,
+                  'device_id': 'flutter_device_${DateTime.now().millisecondsSinceEpoch}',
+                }),
+              );
+
+              if (tokenResponse.statusCode == 200) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Logged in and FCM token sent')),
+                  );
+                }
+              } else {
+                debugPrint('Failed to send FCM token: ${tokenResponse.body}');
+              }
+            } catch (e) {
+              debugPrint('Error sending FCM token: $e');
+            }
+          }
+
+          if (mounted) {
+            Navigator.pushReplacementNamed(context, '/home');
+          }
         } else {
           setState(() {
-            _errorMessage = 'Token not received';
+            _errorMessage = 'Token not received from server';
           });
         }
       } else {
         final data = jsonDecode(response.body);
         setState(() {
-          _errorMessage =
-              data['error'] ?? 'Login error (${response.statusCode})';
+          _errorMessage = data['error'] ?? 'Login failed (${response.statusCode})';
         });
       }
     } catch (e) {
@@ -58,9 +90,11 @@ class _LoginScreenState extends State<LoginScreen> {
         _errorMessage = 'No connection to server\n$e';
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 

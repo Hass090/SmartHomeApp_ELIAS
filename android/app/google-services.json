@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "380211709608",
+    "project_id": "smarthomeapp-elias",
+    "storage_bucket": "smarthomeapp-elias.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:380211709608:android:2223bab1a90d673578649d",
+        "android_client_info": {
+          "package_name": "com.example.smarthomeapp_elias"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJf15HLksZudcKrD3DUJWFJdNvf72jOVA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
