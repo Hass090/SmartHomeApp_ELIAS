@@ -221,7 +221,7 @@ class _MyAppState extends State<MyApp> {
       routes: {
         '/home': (context) => const HomeScreen(),
         '/login': (context) => const LoginScreen(),
-        '/history': (context) => const HistoryScreen(), 
+        '/history': (context) => const HistoryScreen(),
       },
       onUnknownRoute: (settings) {
         return MaterialPageRoute(

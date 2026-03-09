@@ -53,14 +53,17 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 body: jsonEncode({
                   'token': fcmToken,
-                  'device_id': 'flutter_device_${DateTime.now().millisecondsSinceEpoch}',
+                  'device_id':
+                      'flutter_device_${DateTime.now().millisecondsSinceEpoch}',
                 }),
               );
 
               if (tokenResponse.statusCode == 200) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Logged in and FCM token sent')),
+                    const SnackBar(
+                      content: Text('Logged in and FCM token sent'),
+                    ),
                   );
                 }
               } else {
@@ -82,7 +85,8 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         final data = jsonDecode(response.body);
         setState(() {
-          _errorMessage = data['error'] ?? 'Login failed (${response.statusCode})';
+          _errorMessage =
+              data['error'] ?? 'Login failed (${response.statusCode})';
         });
       }
     } catch (e) {
