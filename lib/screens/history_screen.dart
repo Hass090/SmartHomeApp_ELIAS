@@ -14,9 +14,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<Map<String, dynamic>> _events = [];
   bool _isLoading = false;
   String? _errorMessage;
-  String _selectedType =
-      'all'; // 'all', 'access', 'alert', 'system', 'error' и т.д.
-
+  String _selectedType = 'all';
   final List<String> _filterOptions = [
     'All',
     'Access',
@@ -36,11 +34,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-
       if (token == null) throw Exception('No token');
 
       final uri = Uri.parse('http://192.168.1.145:5000/history?limit=50')
@@ -57,14 +53,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
-        setState(() {
-          _events = data.cast<Map<String, dynamic>>();
-        });
+        setState(() => _events = data.cast<Map<String, dynamic>>());
       } else if (response.statusCode == 401) {
         await prefs.remove('auth_token');
         if (mounted) Navigator.pushReplacementNamed(context, '/');
-      } else {
-        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
       setState(() => _errorMessage = 'Failed to load history: $e');
@@ -73,35 +65,60 @@ class _HistoryScreenState extends State<HistoryScreen> {
     }
   }
 
+  IconData _getIconForType(String message, String type) {
+    final msg = message.toLowerCase();
+    final t = type.toLowerCase();
+
+    if (msg.contains('open')) return Icons.lock_open;
+    if (msg.contains('close')) return Icons.lock;
+    if (msg.contains('opened')) return Icons.door_front_door;
+    if (msg.contains('closed')) return Icons.door_front_door;
+    if (msg.contains('motion')) return Icons.directions_run;
+    if (t.contains('alert')) return Icons.warning_amber_rounded;
+    if (t.contains('control')) return Icons.settings_remote;
+    return Icons.info_outline;
+  }
+
+  Color _getColorForType(String message, String type) {
+    final msg = message.toLowerCase();
+    if (msg.contains('open')) return Colors.green;
+    if (msg.contains('close') || msg.contains('closed')) return Colors.red;
+    if (msg.contains('motion') || msg.contains('alert')) return Colors.orange;
+    return Colors.white70;
+  }
+
   String _formatType(String type) {
-    switch (type.toLowerCase()) {
-      case 'access':
-        return 'Access';
-      case 'alert':
-        return 'Alert';
-      case 'system':
-        return 'System';
-      case 'error':
-        return 'Error';
-      default:
-        return type;
-    }
+    final t = type.toLowerCase();
+    if (t == 'access' || t == 'control') return 'Control';
+    if (t == 'alert') return 'Alert';
+    return type;
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
+        backgroundColor: Colors.black,
         title: const Text('Event History'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         actions: [
           DropdownButton<String>(
             value: _selectedType,
-            items: _filterOptions.map((String value) {
-              return DropdownMenuItem<String>(
-                value: value.toLowerCase(),
-                child: Text(value),
-              );
-            }).toList(),
+            dropdownColor: const Color(0xFF1C1C1E),
+            style: const TextStyle(color: Colors.white, fontSize: 16),
+            underline: const SizedBox(),
+            items: _filterOptions
+                .map(
+                  (value) => DropdownMenuItem(
+                    value: value.toLowerCase(),
+                    child: Text(value),
+                  ),
+                )
+                .toList(),
             onChanged: (newValue) {
               if (newValue != null) {
                 setState(() => _selectedType = newValue);
@@ -109,6 +126,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               }
             },
           ),
+          const SizedBox(width: 16),
         ],
       ),
       body: RefreshIndicator(
@@ -119,44 +137,56 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ? Center(
                 child: Text(
                   _errorMessage!,
-                  style: const TextStyle(color: Colors.red),
+                  style: const TextStyle(color: Colors.red, fontSize: 16),
                 ),
               )
             : _events.isEmpty
-            ? const Center(child: Text('No events yet'))
+            ? const Center(
+                child: Text(
+                  'No events yet',
+                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                ),
+              )
             : ListView.builder(
+                padding: const EdgeInsets.all(24),
                 itemCount: _events.length,
                 itemBuilder: (context, index) {
                   final event = _events[index];
-                  final timestamp = event['timestamp'] ?? '';
-                  final type = _formatType(event['type'] ?? 'unknown');
                   final message = event['message'] ?? '';
+                  final timestamp = event['timestamp'] ?? '';
+                  final type = event['type'] ?? 'unknown';
 
-                  return ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: _getColorForType(type),
-                      child: Text(type[0].toUpperCase()),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Card(
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.all(16),
+                        leading: Icon(
+                          _getIconForType(message, type),
+                          size: 36,
+                          color: _getColorForType(message, type),
+                        ),
+                        title: Text(
+                          message,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        subtitle: Text(
+                          '${_formatType(type)} • $timestamp',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
                     ),
-                    title: Text(message),
-                    subtitle: Text('$type • $timestamp'),
-                    isThreeLine: true,
                   );
                 },
               ),
       ),
     );
-  }
-
-  Color _getColorForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'access':
-        return Colors.green;
-      case 'alert':
-        return Colors.red;
-      case 'error':
-        return Colors.orange;
-      default:
-        return Colors.blueGrey;
-    }
   }
 }

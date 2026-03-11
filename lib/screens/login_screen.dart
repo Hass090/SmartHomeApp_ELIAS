@@ -14,7 +14,6 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -23,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-
     try {
       final response = await http.post(
         Uri.parse('http://192.168.1.145:5000/login'),
@@ -33,11 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
           'password': _passwordController.text,
         }),
       );
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final token = data['token'] as String?;
-
         if (token != null && token.isNotEmpty) {
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString('auth_token', token);
@@ -57,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
                       'flutter_device_${DateTime.now().millisecondsSinceEpoch}',
                 }),
               );
-
               if (tokenResponse.statusCode == 200) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -66,14 +61,11 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   );
                 }
-              } else {
-                debugPrint('Failed to send FCM token: ${tokenResponse.body}');
               }
             } catch (e) {
               debugPrint('Error sending FCM token: $e');
             }
           }
-
           if (mounted) {
             Navigator.pushReplacementNamed(context, '/home');
           }
@@ -95,9 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
       });
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -105,7 +95,11 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Sign In'),
+        backgroundColor: Colors.black,
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
@@ -115,10 +109,20 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
                   labelText: 'Email',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.email_outlined),
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: const Color(0xFF1C1C1E),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.email_outlined,
+                    color: Colors.grey,
+                  ),
                 ),
                 textInputAction: TextInputAction.next,
               ),
@@ -126,10 +130,20 @@ class _LoginScreenState extends State<LoginScreen> {
               TextField(
                 controller: _passwordController,
                 obscureText: true,
-                decoration: const InputDecoration(
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
                   labelText: 'Password',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.lock_outline),
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: const Color(0xFF1C1C1E),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.lock_outline,
+                    color: Colors.grey,
+                  ),
                 ),
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
@@ -145,7 +159,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 56,
                 child: ElevatedButton(
                   onPressed: _isLoading ? null : _login,
                   child: _isLoading
@@ -154,7 +168,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2.5),
                         )
-                      : const Text('Sign In', style: TextStyle(fontSize: 16)),
+                      : const Text('Sign In', style: TextStyle(fontSize: 18)),
                 ),
               ),
             ],

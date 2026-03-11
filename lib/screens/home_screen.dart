@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'control_screen.dart';
 import 'history_screen.dart';
@@ -20,33 +21,23 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = false;
   String? _errorMessage;
   Timer? _timer;
-  late MqttService _mqttService;
 
   @override
   void initState() {
     super.initState();
-    _mqttService = MqttService();
-    _mqttService.addListener(_updateUIFromMqtt);
     _fetchStatus();
     _timer = Timer.periodic(const Duration(seconds: 15), (_) => _fetchStatus());
-    debugPrint('MQTT service initialized');
-  }
-
-  void _updateUIFromMqtt() {
-    setState(() {});
   }
 
   Future<void> _fetchStatus() async {
-    if (_httpStatus.isEmpty) {
-      setState(() => _isLoading = true);
-    }
+    if (_httpStatus.isEmpty) setState(() => _isLoading = true);
     setState(() => _errorMessage = null);
+
     try {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
-      if (token == null) {
-        throw Exception('No token found. Please login again.');
-      }
+      if (token == null) throw Exception('No token found');
+
       final response = await http.get(
         Uri.parse('http://192.168.1.145:5000/status'),
         headers: {
@@ -54,23 +45,15 @@ class _HomeScreenState extends State<HomeScreen> {
           'Authorization': 'Bearer $token',
         },
       );
+
       if (response.statusCode == 200) {
-        final decoded = jsonDecode(response.body);
-        debugPrint('HTTP status: $decoded');
         setState(() {
-          _httpStatus = decoded;
+          _httpStatus = jsonDecode(response.body);
           _isLoading = false;
         });
       } else if (response.statusCode == 401) {
         await prefs.remove('auth_token');
-        if (mounted) {
-          Navigator.pushReplacementNamed(context, '/');
-        }
-      } else {
-        setState(() {
-          _errorMessage = 'Server error: ${response.statusCode}';
-          _isLoading = false;
-        });
+        if (mounted) Navigator.pushReplacementNamed(context, '/');
       }
     } catch (e) {
       setState(() {
@@ -82,29 +65,52 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
-    _mqttService.removeListener(_updateUIFromMqtt);
-    _mqttService.dispose();
     _timer?.cancel();
     super.dispose();
   }
 
+  Widget _buildTeslaIcon(IconData icon, String label, VoidCallback onTap) {
+    return Column(
+      children: [
+        IconButton(
+          onPressed: onTap,
+          icon: Icon(icon, size: 36, color: Colors.white),
+        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final tempStr = _mqttService.temperature;
-    final humStr = _mqttService.humidity;
-    final pressStr = _mqttService.pressure;
-    final doorRaw = _mqttService.doorStatus;
-    final doorLower = doorRaw.toLowerCase();
-    final isDoorOpen = doorLower == 'open' || doorRaw == 'OPEN';
+    final mqtt = Provider.of<MqttService>(context);
+
+    final tempStr = _httpStatus['temperature']?.toStringAsFixed(1) ?? '--';
+    final humStr = _httpStatus['humidity']?.toStringAsFixed(0) ?? '--';
+    final pressStr = _httpStatus['pressure']?.toStringAsFixed(0) ?? '--';
+
+    final doorRaw = mqtt.doorStatus;
+    final isDoorOpen = doorRaw.toLowerCase() == 'open';
     final doorDisplay = isDoorOpen ? 'Open' : 'Closed';
-    final doorColor = isDoorOpen ? Colors.orange : Colors.green;
+    final doorColor = isDoorOpen
+        ? const Color.fromRGBO(255, 152, 0, 1)
+        : const Color.fromARGB(255, 76, 175, 80);
+
     final isMotionDetected =
-        _mqttService.motionDetected || _httpStatus['motion_detected'] == true;
+        mqtt.motionDetected || _httpStatus['motion_detected'] == true;
     final lastAccess = _httpStatus['last_access'] as String?;
 
+    final statusText = mqtt.isConnected ? 'Connected' : 'Disconnected';
+    final statusColor = mqtt.isConnected ? Colors.green : Colors.red;
+
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Smart Home ELIAS'),
+        backgroundColor: Colors.black,
+        title: const Text(
+          'ELIAS',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -113,203 +119,209 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 12,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: _mqttService.isConnected ? Colors.green : Colors.red,
+                color: mqtt.isConnected ? Colors.green : Colors.red,
               ),
             ),
           ),
           IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchStatus),
-
           IconButton(
             icon: const Icon(Icons.settings_outlined),
-            tooltip: 'Settings',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SettingsScreen()),
+            ),
           ),
         ],
       ),
-      body:
-          _isLoading && _httpStatus.isEmpty && _mqttService.temperature == '--'
+      body: _isLoading && _httpStatus.isEmpty && tempStr == '--'
           ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
           ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  _errorMessage!,
-                  style: const TextStyle(color: Colors.red, fontSize: 18),
-                  textAlign: TextAlign.center,
-                ),
+              child: Text(
+                _errorMessage!,
+                style: const TextStyle(color: Colors.red),
               ),
             )
           : RefreshIndicator(
               onRefresh: _fetchStatus,
               child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Current Conditions',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _buildInfoItem(
-                                  icon: Icons.thermostat,
-                                  label: 'Temperature',
-                                  value: '$tempStr °C',
-                                ),
-                                _buildInfoItem(
-                                  icon: Icons.water_drop,
-                                  label: 'Humidity',
-                                  value: '$humStr %',
-                                ),
-                                _buildInfoItem(
-                                  icon: Icons.compress,
-                                  label: 'Pressure',
-                                  value: '$pressStr hPa',
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 16,
                       ),
-                    ),
-                    const SizedBox(height: 24),
-                    Card(
-                      elevation: 4,
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Security',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            ListTile(
-                              leading: Icon(
-                                Icons.door_front_door,
-                                color: doorColor,
-                                size: 36,
-                              ),
-                              title: const Text('Door'),
-                              subtitle: Text(
-                                doorDisplay,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'ELIAS',
                                 style: TextStyle(
-                                  color: doorColor,
+                                  fontSize: 34,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                statusText,
+                                style: TextStyle(
+                                  color: statusColor,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '$tempStr °C',
+                                style: const TextStyle(
+                                  fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            ),
-                            ListTile(
-                              leading: Icon(
-                                Icons.sensors,
-                                color: isMotionDetected
-                                    ? Colors.red
-                                    : Colors.grey,
-                                size: 36,
-                              ),
-                              title: const Text('Motion'),
-                              subtitle: Text(
-                                isMotionDetected ? 'Detected' : 'No motion',
-                                style: TextStyle(
-                                  color: isMotionDetected ? Colors.red : null,
+                              const SizedBox(height: 4),
+                              Text(
+                                '$humStr % • $pressStr hPa',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.white70,
                                 ),
                               ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Container(
+                      height: 240,
+                      margin: const EdgeInsets.symmetric(horizontal: 24),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1C1C1E),
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.home_filled,
+                              size: 160,
+                              color: Colors.white70,
                             ),
-                            if (lastAccess != null)
-                              ListTile(
-                                leading: const Icon(Icons.login, size: 36),
-                                title: const Text('Last Access'),
-                                subtitle: Text(lastAccess),
+                            Text(
+                              'Smart Home',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w500,
                               ),
+                            ),
                           ],
                         ),
                       ),
                     ),
+
                     const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.door_sliding),
-                      label: const Text('Door Control'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[700],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _buildTeslaIcon(
+                            Icons.lock,
+                            'Door',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ControlScreen(),
+                              ),
+                            ),
+                          ),
+                          _buildTeslaIcon(Icons.thermostat, 'Climate', () {}),
+                          _buildTeslaIcon(Icons.lightbulb, 'Lights', () {}),
+                          _buildTeslaIcon(
+                            Icons.waves,
+                            'History',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const HistoryScreen(),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // Security card
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Security',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              ListTile(
+                                leading: Icon(
+                                  Icons.door_front_door,
+                                  color: doorColor,
+                                  size: 36,
+                                ),
+                                title: const Text('Door'),
+                                subtitle: Text(
+                                  doorDisplay,
+                                  style: TextStyle(
+                                    color: doorColor,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              ListTile(
+                                leading: Icon(
+                                  Icons.sensors,
+                                  color: isMotionDetected
+                                      ? Colors.red
+                                      : Colors.grey,
+                                  size: 36,
+                                ),
+                                title: const Text('Motion'),
+                                subtitle: Text(
+                                  isMotionDetected ? 'Detected' : 'No motion',
+                                ),
+                              ),
+                              if (lastAccess != null)
+                                ListTile(
+                                  leading: const Icon(Icons.login, size: 36),
+                                  title: const Text('Last Access'),
+                                  subtitle: Text(lastAccess),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const ControlScreen(),
-                          ),
-                        );
-                      },
                     ),
-                    const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      icon: const Icon(Icons.history),
-                      label: const Text('Event History'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const HistoryScreen(),
-                          ),
-                        );
-                      },
-                    ),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
-    );
-  }
-
-  Widget _buildInfoItem({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Column(
-      children: [
-        Icon(icon, size: 40, color: Colors.blue),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        Text(label, style: const TextStyle(color: Colors.grey)),
-      ],
     );
   }
 }

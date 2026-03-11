@@ -27,9 +27,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final settings = await FirebaseMessaging.instance.getNotificationSettings();
-
     if (!mounted) return;
-
     setState(() {
       _permissionGranted =
           settings.authorizationStatus == AuthorizationStatus.authorized;
@@ -47,7 +45,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final authToken = prefs.getString('auth_token');
       if (authToken == null) return;
-
       final url = Uri.parse('http://192.168.1.145:5000/register_token');
       final response = await http.post(
         url,
@@ -70,7 +67,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final authToken = prefs.getString('auth_token');
       if (authToken == null) return;
-
       final url = Uri.parse('http://192.168.1.145:5000/unregister_token');
       final response = await http.post(
         url,
@@ -91,20 +87,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleNotifications(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     final messaging = FirebaseMessaging.instance;
-
     setState(() => _notificationsEnabled = value);
-
     if (value) {
       final settings = await messaging.requestPermission();
       final granted =
           settings.authorizationStatus == AuthorizationStatus.authorized;
       await prefs.setBool('notifications_enabled', granted);
-
       if (granted) {
         final token = await messaging.getToken();
-        if (token != null) {
-          await _registerFcmToken(token);
-        }
+        if (token != null) await _registerFcmToken(token);
         _notificationStatus = 'Notifications enabled';
       } else {
         _notificationStatus = 'Permission not granted';
@@ -115,7 +106,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await prefs.setBool('notifications_enabled', false);
       _notificationStatus = 'Notifications disabled';
     }
-
     if (mounted) setState(() {});
   }
 
@@ -124,9 +114,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          title: const Text('Log Out'),
+          backgroundColor: const Color(0xFF1C1C1E),
+          title: const Text('Log Out', style: TextStyle(color: Colors.white)),
           content: const Text(
             'Are you sure you want to log out?\nYou will need to sign in again with your credentials.',
+            style: TextStyle(color: Colors.white70),
           ),
           actions: [
             TextButton(
@@ -139,23 +131,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ],
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
           ),
         );
       },
     );
-
     if (confirmed != true) return;
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
-
     if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
-
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -165,7 +153,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings'), centerTitle: true),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Settings'),
+        backgroundColor: Colors.black,
+      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -176,7 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     leading: const Icon(
                       Icons.smart_toy_outlined,
                       size: 32,
-                      color: Colors.blue,
+                      color: Colors.white,
                     ),
                     title: const Text('SmartHome ELIAS'),
                     subtitle: const Text('Raspberry Pi 5 + Pico 2W'),
@@ -193,7 +185,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         value: _notificationsEnabled,
                         onChanged: _toggleNotifications,
                         secondary: const Icon(Icons.notifications_outlined),
-                        activeThumbColor: Colors.blue,
+                        activeThumbColor: Colors.white,
                       ),
                       if (!_permissionGranted)
                         Padding(
@@ -202,6 +194,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             onPressed: () => _toggleNotifications(true),
                             icon: const Icon(Icons.notifications_active),
                             label: const Text('Request Permission'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.white,
+                              side: const BorderSide(color: Colors.white24),
+                            ),
                           ),
                         ),
                     ],
@@ -221,7 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                       ),
-                      const Divider(height: 1),
+                      const Divider(height: 1, color: Colors.white24),
                       ListTile(
                         leading: const Icon(
                           Icons.logout,
