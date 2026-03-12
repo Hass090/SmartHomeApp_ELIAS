@@ -11,10 +11,6 @@ class ControlScreen extends StatelessWidget {
       builder: (context, mqtt, child) {
         final isOpen = mqtt.doorStatus.toLowerCase() == 'open';
         final doorText = 'Door: ${mqtt.doorStatus.toUpperCase()}';
-        final iconColor = isOpen
-            ? const Color.fromRGBO(255, 152, 0, 1)
-            : const Color.fromARGB(255, 76, 175, 80);
-        final iconData = isOpen ? Icons.lock_open : Icons.lock;
 
         return Scaffold(
           backgroundColor: Colors.black,
@@ -35,13 +31,30 @@ class ControlScreen extends StatelessWidget {
                     height: 280,
                     width: double.infinity,
                     decoration: BoxDecoration(
-                      color: const Color.fromRGBO(28, 28, 30, 1),
+                      color: const Color(0xFF1C1C1E),
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(iconData, size: 140, color: iconColor),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 400),
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
+                                return ScaleTransition(
+                                  scale: animation,
+                                  child: child,
+                                );
+                              },
+                          child: Icon(
+                            isOpen ? Icons.lock_open : Icons.lock,
+                            key: ValueKey<bool>(isOpen),
+                            size: 140,
+                            color: isOpen
+                                ? const Color.fromRGBO(255, 152, 0, 1)
+                                : const Color.fromARGB(255, 76, 175, 80),
+                          ),
+                        ),
                         const SizedBox(height: 24),
                         Text(
                           doorText,
@@ -54,9 +67,8 @@ class ControlScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-
                   const SizedBox(height: 40),
-
+                  // Buttons
                   Row(
                     children: [
                       Expanded(
@@ -71,9 +83,9 @@ class ControlScreen extends StatelessWidget {
                           ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color.fromRGBO(
-                              28,
-                              28,
-                              30,
+                              255,
+                              152,
+                              0,
                               1,
                             ),
                             foregroundColor: Colors.white,
@@ -97,11 +109,11 @@ class ControlScreen extends StatelessWidget {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color.fromRGBO(
-                              28,
-                              28,
-                              30,
-                              1,
+                            backgroundColor: const Color.fromARGB(
+                              255,
+                              76,
+                              175,
+                              80,
                             ),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 20),
@@ -114,8 +126,6 @@ class ControlScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 60),
                 ],
               ),
             ),

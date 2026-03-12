@@ -159,11 +159,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.all(16),
                         leading: Icon(
                           _getIconForType(message, type),
-                          size: 36,
+                          size: 40,
                           color: _getColorForType(message, type),
                         ),
                         title: Text(

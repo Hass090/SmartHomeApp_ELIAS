@@ -70,14 +70,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTeslaIcon(IconData icon, String label, VoidCallback onTap) {
-    return Column(
-      children: [
-        IconButton(
-          onPressed: onTap,
-          icon: Icon(icon, size: 36, color: Colors.white),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      splashColor: Colors.white.withAlpha(30),
+      highlightColor: Colors.white.withAlpha(20),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Column(
+          children: [
+            Icon(icon, size: 44, color: Colors.white),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 13),
+            ),
+          ],
         ),
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-      ],
+      ),
     );
   }
 
@@ -114,16 +124,54 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16),
-            child: Container(
-              width: 12,
-              height: 12,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: mqtt.isConnected ? Colors.green : Colors.red,
-              ),
-            ),
+            child: mqtt.isConnected
+                ? TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.8, end: 1.2),
+                    duration: const Duration(milliseconds: 1200),
+                    curve: Curves.easeInOut,
+                    builder: (context, value, child) {
+                      return Transform.scale(
+                        scale: value,
+                        child: Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.green,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withAlpha(150),
+                                blurRadius: 8,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    width: 12,
+                    height: 12,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.red,
+                    ),
+                  ),
           ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _fetchStatus),
+          IconButton(
+            icon: _isLoading
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.refresh),
+            onPressed: _fetchStatus,
+          ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             onPressed: () => Navigator.push(
