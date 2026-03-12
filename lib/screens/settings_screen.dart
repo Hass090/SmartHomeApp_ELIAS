@@ -13,7 +13,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
+  bool _notificationsEnabled = false;
   bool _permissionGranted = false;
   String _notificationStatus = 'Loading...';
   bool _isLoading = true;
@@ -26,13 +26,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
-    final settings = await FirebaseMessaging.instance.getNotificationSettings();
+    final messaging = FirebaseMessaging.instance;
+
+    final settings = await messaging.getNotificationSettings();
+    final granted =
+        settings.authorizationStatus == AuthorizationStatus.authorized;
+
+    final existingToken = await messaging.getToken();
+
+    bool shouldBeEnabled;
+    if (existingToken != null && granted) {
+      shouldBeEnabled = true;
+      await prefs.setBool('notifications_enabled', true);
+      _registerFcmToken(existingToken);
+    } else {
+      shouldBeEnabled = prefs.getBool('notifications_enabled') ?? false;
+    }
+
     if (!mounted) return;
+
     setState(() {
-      _permissionGranted =
-          settings.authorizationStatus == AuthorizationStatus.authorized;
-      _notificationsEnabled =
-          prefs.getBool('notifications_enabled') ?? _permissionGranted;
+      _permissionGranted = granted;
+      _notificationsEnabled = shouldBeEnabled;
       _notificationStatus = _notificationsEnabled
           ? 'Notifications enabled'
           : 'Notifications disabled';
@@ -45,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final authToken = prefs.getString('auth_token');
       if (authToken == null) return;
+
       final url = Uri.parse('http://192.168.1.145:5000/register_token');
       final response = await http.post(
         url,
@@ -54,8 +70,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
         body: jsonEncode({'fcm_token': token}),
       );
-      if (response.statusCode == 200) {
-        debugPrint('Token registered on server');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint('FCM token registered on server');
+      } else {
+        debugPrint('Failed to register token: ${response.statusCode}');
       }
     } catch (e) {
       debugPrint('Register token error: $e');
@@ -67,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final prefs = await SharedPreferences.getInstance();
       final authToken = prefs.getString('auth_token');
       if (authToken == null) return;
+
       final url = Uri.parse('http://192.168.1.145:5000/unregister_token');
       final response = await http.post(
         url,
@@ -76,6 +96,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         },
         body: jsonEncode({}),
       );
+
       if (response.statusCode == 200) {
         debugPrint('Token unregistered from server');
       }
@@ -87,26 +108,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _toggleNotifications(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     final messaging = FirebaseMessaging.instance;
-    setState(() => _notificationsEnabled = value);
+
+    setState(() {
+      _notificationsEnabled = value;
+      _notificationStatus = value ? 'Enabling...' : 'Disabling...';
+    });
+
     if (value) {
-      final settings = await messaging.requestPermission();
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       final granted =
           settings.authorizationStatus == AuthorizationStatus.authorized;
+
       await prefs.setBool('notifications_enabled', granted);
+      _permissionGranted = granted;
+
       if (granted) {
         final token = await messaging.getToken();
-        if (token != null) await _registerFcmToken(token);
-        _notificationStatus = 'Notifications enabled';
+        if (token != null) {
+          await _registerFcmToken(token);
+        }
+        setState(() {
+          _notificationStatus = 'Notifications enabled';
+        });
       } else {
-        _notificationStatus = 'Permission not granted';
+        setState(() {
+          _notificationsEnabled = false;
+          _notificationStatus = 'Permission denied';
+        });
       }
     } else {
       await _unregisterFcmToken();
       await messaging.deleteToken();
       await prefs.setBool('notifications_enabled', false);
-      _notificationStatus = 'Notifications disabled';
+
+      setState(() {
+        _notificationStatus = 'Notifications disabled';
+      });
     }
-    if (mounted) setState(() {});
   }
 
   Future<void> _showLogoutDialog(BuildContext context) async {
@@ -136,14 +178,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         );
       },
     );
+
     if (confirmed != true) return;
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+
     if (!context.mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
+
     if (!context.mounted) return;
     ScaffoldMessenger.of(
       context,
