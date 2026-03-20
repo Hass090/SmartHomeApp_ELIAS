@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'control_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
+import 'fan_control_screen.dart';
 import '../services/mqtt_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -291,7 +292,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          _buildTeslaIcon(Icons.thermostat, 'Climate', () {}),
+                          _buildTeslaIcon(
+                            Icons.thermostat,
+                            'Climate',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const FanControlScreen(),
+                              ),
+                            ),
+                          ),
                           _buildTeslaIcon(Icons.lightbulb, 'Lights', () {}),
                           _buildTeslaIcon(
                             Icons.waves,
