@@ -11,7 +11,11 @@ class MqttService with ChangeNotifier {
   String humidity = '--';
   String pressure = '--';
   String doorStatus = 'unknown';
+  String fanStatus = 'OFF';
+  String fanMode = 'AUTO';
   bool motionDetected = false;
+
+  List<double> temperatureHistory = [];
 
   MqttService() {
     _connect();
@@ -67,6 +71,11 @@ class MqttService with ChangeNotifier {
     );
     client!.subscribe('smarthome/pico/security/door', MqttQos.atLeastOnce);
     client!.subscribe('smarthome/pico/security/motion', MqttQos.atLeastOnce);
+    client!.subscribe('smarthome/pico/environment/fan', MqttQos.atLeastOnce);
+    client!.subscribe(
+      'smarthome/pico/environment/fan_mode',
+      MqttQos.atLeastOnce,
+    );
 
     client!.updates!.listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
       final recMess = c![0].payload as MqttPublishMessage;
@@ -83,15 +92,40 @@ class MqttService with ChangeNotifier {
   }
 
   void _updateValue(String topic, String payload) {
-    if (topic.contains('temperature')) temperature = payload;
+    if (topic.contains('temperature')) {
+      temperature = payload;
+      final val = double.tryParse(payload) ?? 0;
+      temperatureHistory.add(val);
+      if (temperatureHistory.length > 30) temperatureHistory.removeAt(0);
+    }
     if (topic.contains('humidity')) humidity = payload;
     if (topic.contains('pressure')) pressure = payload;
     if (topic.contains('door')) doorStatus = payload.toUpperCase();
-
     if (topic.contains('motion')) {
       final lower = payload.toLowerCase().trim();
       motionDetected = lower != 'quiet' && lower != 'false' && lower != '0';
     }
+    if (topic.contains('fan_mode')) {
+      fanMode = payload.trim().toUpperCase();
+    }
+    if (topic.contains('fan')) {
+      fanStatus = payload.toUpperCase().trim();
+    }
+  }
+
+  void publishFanCommand(String command) {
+    if (client == null || !isConnected) {
+      debugPrint('MQTT is not connected');
+      return;
+    }
+    final builder = MqttClientPayloadBuilder();
+    builder.addString(command);
+    client!.publishMessage(
+      'smarthome/pico/control/fan',
+      MqttQos.atLeastOnce,
+      builder.payload!,
+    );
+    debugPrint('Fan command sent: $command');
   }
 
   void _onDisconnected() {
