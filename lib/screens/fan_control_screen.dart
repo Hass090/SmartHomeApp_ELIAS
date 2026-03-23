@@ -13,7 +13,6 @@ class FanControlScreen extends StatelessWidget {
         final isFanOn = mqtt.fanStatus == 'ON';
         final isAutoMode = mqtt.fanMode == 'AUTO';
         final temp = mqtt.temperature;
-        
 
         return Scaffold(
           backgroundColor: Colors.black,
@@ -78,9 +77,7 @@ class FanControlScreen extends StatelessWidget {
                           );
                         },
                     child: Container(
-                      key: ValueKey<String>(
-                        mqtt.fanStatus,
-                      ), // ключ по статусу — обязательно!
+                      key: ValueKey<String>(mqtt.fanStatus),
                       height: 280,
                       width: double.infinity,
                       decoration: BoxDecoration(
