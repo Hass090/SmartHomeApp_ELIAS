@@ -13,6 +13,7 @@ class MqttService with ChangeNotifier {
   String doorStatus = 'unknown';
   String fanStatus = 'OFF';
   String fanMode = 'AUTO';
+  String lightStatus = 'OFF';
   bool motionDetected = false;
 
   List<double> temperatureHistory = [];
@@ -56,7 +57,7 @@ class MqttService with ChangeNotifier {
     isConnected = true;
     notifyListeners();
 
-    // Your real topics
+    // Real topics
     client!.subscribe(
       'smarthome/pico/environment/temperature',
       MqttQos.atLeastOnce,
@@ -76,6 +77,7 @@ class MqttService with ChangeNotifier {
       'smarthome/pico/environment/fan_mode',
       MqttQos.atLeastOnce,
     );
+    client!.subscribe('smarthome/pico/environment/light', MqttQos.atLeastOnce);
 
     client!.updates!.listen((List<MqttReceivedMessage<MqttMessage?>>? c) {
       final recMess = c![0].payload as MqttPublishMessage;
@@ -110,6 +112,9 @@ class MqttService with ChangeNotifier {
     }
     if (topic.contains('fan')) {
       fanStatus = payload.toUpperCase().trim();
+    }
+    if (topic.contains('light')) {
+      lightStatus = payload.toUpperCase();
     }
   }
 
@@ -148,6 +153,17 @@ class MqttService with ChangeNotifier {
       builder.payload!,
     );
     debugPrint('Door command sent: $command');
+  }
+
+  void publishLightCommand(String command) {
+    final builder = MqttClientPayloadBuilder();
+    builder.addString(command);
+    client!.publishMessage(
+      'smarthome/pico/control/light',
+      MqttQos.atLeastOnce,
+      builder.payload!,
+    );
+    debugPrint('Light command sent: $command');
   }
 
   @override
