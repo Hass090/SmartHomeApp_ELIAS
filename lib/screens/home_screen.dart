@@ -8,6 +8,7 @@ import 'control_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'fan_control_screen.dart';
+import 'lights_control_screen.dart';
 import '../services/mqtt_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -302,7 +303,16 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           ),
-                          _buildTeslaIcon(Icons.lightbulb, 'Lights', () {}),
+                          _buildTeslaIcon(
+                            Icons.lightbulb,
+                            'Lights',
+                            () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LightsControlScreen(),
+                              ),
+                            ),
+                          ),
                           _buildTeslaIcon(
                             Icons.waves,
                             'History',
