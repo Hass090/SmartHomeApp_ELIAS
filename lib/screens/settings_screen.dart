@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/mqtt_service.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -27,11 +29,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final messaging = FirebaseMessaging.instance;
-
     final settings = await messaging.getNotificationSettings();
     final granted =
         settings.authorizationStatus == AuthorizationStatus.authorized;
-
     final existingToken = await messaging.getToken();
 
     bool shouldBeEnabled;
@@ -44,7 +44,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     if (!mounted) return;
-
     setState(() {
       _permissionGranted = granted;
       _notificationsEnabled = shouldBeEnabled;
@@ -122,7 +121,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       final granted =
           settings.authorizationStatus == AuthorizationStatus.authorized;
-
       await prefs.setBool('notifications_enabled', granted);
       _permissionGranted = granted;
 
@@ -144,11 +142,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _unregisterFcmToken();
       await messaging.deleteToken();
       await prefs.setBool('notifications_enabled', false);
-
       setState(() {
         _notificationStatus = 'Notifications disabled';
       });
     }
+  }
+
+  Future<void> _reconnectMQTT() async {
+    final mqtt = Provider.of<MqttService>(context, listen: false);
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Reconnecting MQTT...')));
+
+    await mqtt.reconnect();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('MQTT reconnected')));
   }
 
   Future<void> _showLogoutDialog(BuildContext context) async {
@@ -247,6 +259,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                         ),
                     ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Reconnect MQTT
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.wifi, color: Colors.blueAccent),
+                    title: const Text('Reconnect MQTT'),
+                    subtitle: const Text('Force reconnect to broker'),
+                    onTap: _reconnectMQTT,
                   ),
                 ),
                 const SizedBox(height: 24),

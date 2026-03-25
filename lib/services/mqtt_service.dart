@@ -15,7 +15,6 @@ class MqttService with ChangeNotifier {
   String fanMode = 'AUTO';
   String lightStatus = 'OFF';
   bool motionDetected = false;
-
   List<double> temperatureHistory = [];
 
   MqttService() {
@@ -85,9 +84,7 @@ class MqttService with ChangeNotifier {
         recMess.payload.message,
       );
       final topic = c[0].topic;
-
       debugPrint('MQTT received → $topic : $payload');
-
       _updateValue(topic, payload);
       notifyListeners();
     });
@@ -118,6 +115,20 @@ class MqttService with ChangeNotifier {
     }
   }
 
+  Future<void> reconnect() async {
+    debugPrint('Reconnecting MQTT from Settings...');
+
+    if (client != null &&
+        client!.connectionStatus?.state == MqttConnectionState.connected) {
+      client!.disconnect();
+    }
+
+    isConnected = false;
+    notifyListeners();
+    await Future.delayed(const Duration(milliseconds: 800));
+    await _connect();
+  }
+
   void publishFanCommand(String command) {
     if (client == null || !isConnected) {
       debugPrint('MQTT is not connected');
@@ -146,7 +157,6 @@ class MqttService with ChangeNotifier {
     }
     final builder = MqttClientPayloadBuilder();
     builder.addString(command);
-
     client!.publishMessage(
       'smarthome/pico/control/door',
       MqttQos.atLeastOnce,
@@ -156,6 +166,10 @@ class MqttService with ChangeNotifier {
   }
 
   void publishLightCommand(String command) {
+    if (client == null || !isConnected) {
+      debugPrint('MQTT is not connected');
+      return;
+    }
     final builder = MqttClientPayloadBuilder();
     builder.addString(command);
     client!.publishMessage(
