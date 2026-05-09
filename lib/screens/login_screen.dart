@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
     try {
       final response = await http.post(
-        Uri.parse('http://192.168.1.145:5000/login'),
+        Uri.parse('http://192.168.1.25:5000/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': _emailController.text.trim(),
@@ -42,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (fcmToken != null) {
             try {
               final tokenResponse = await http.post(
-                Uri.parse('http://192.168.1.145:5000/register_token'),
+                Uri.parse('http://192.168.1.25:5000/register_token'),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': 'Bearer $token',

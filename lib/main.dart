@@ -59,7 +59,7 @@ class _MyAppState extends State<MyApp> {
       final authToken = prefs.getString('auth_token');
       if (authToken == null) return;
 
-      final url = Uri.parse('http://192.168.1.145:5000/register_token');
+      final url = Uri.parse('http://192.168.1.25:5000/register_token');
       final response = await http.post(
         url,
         headers: {

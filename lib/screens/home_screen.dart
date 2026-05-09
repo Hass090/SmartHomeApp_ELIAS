@@ -41,7 +41,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (token == null) throw Exception('No token found');
 
       final response = await http.get(
-        Uri.parse('http://192.168.1.145:5000/status'),
+        Uri.parse('http://192.168.1.25:5000/status'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',

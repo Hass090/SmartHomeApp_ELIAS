@@ -22,7 +22,7 @@ class MqttService with ChangeNotifier {
   }
 
   Future<void> _connect() async {
-    const broker = '192.168.1.145';
+    const broker = '192.168.1.25';
     const port = 1883;
     final clientId = 'flutter_app_${DateTime.now().millisecondsSinceEpoch}';
 

@@ -39,7 +39,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final token = prefs.getString('auth_token');
       if (token == null) throw Exception('No token');
 
-      final uri = Uri.parse('http://192.168.1.145:5000/history?limit=50')
+      final uri = Uri.parse('http://192.168.1.25:5000/history?limit=50')
           .replace(
             queryParameters: _selectedType == 'all'
                 ? null
