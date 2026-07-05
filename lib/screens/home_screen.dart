@@ -101,13 +101,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final humStr = _httpStatus['humidity']?.toStringAsFixed(0) ?? '--';
     final pressStr = _httpStatus['pressure']?.toStringAsFixed(0) ?? '--';
 
-    final doorRaw = mqtt.doorStatus;
     String doorRaw = mqtt.doorStatus;
     if (doorRaw == 'unknown' && _httpStatus['door'] != null) {
       doorRaw = _httpStatus['door']; 
     }
     final isDoorOpen = doorRaw.toLowerCase() == 'open';
     final doorDisplay = isDoorOpen ? 'Open' : 'Closed';
+    final doorColor = isDoorOpen
         ? const Color.fromRGBO(255, 152, 0, 1)
         : const Color.fromARGB(255, 76, 175, 80);
 
