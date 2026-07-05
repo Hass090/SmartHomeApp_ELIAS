@@ -1,4 +1,4 @@
-# [SmartHome ELIAS]([github.com/Hass090/SmartHomeApp_ELIAS](https://github.com/Hass090/SmartHome_ELIAS)) (Mobile Application)
+# [SmartHome ELIAS](https://github.com/Hass090/SmartHome_ELIAS) (Mobile Application)
 
 The official cross-platform mobile client for the **SmartHome ELIAS** ecosystem. Built using **Flutter**...
 
