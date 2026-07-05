@@ -1,4 +1,6 @@
-# SmartHomeApp_ELIAS (Mobile Application)
+# [SmartHome ELIAS]([github.com/Hass090/SmartHomeApp_ELIAS](https://github.com/Hass090/SmartHome_ELIAS)) (Mobile Application)
+
+The official cross-platform mobile client for the **SmartHome ELIAS** ecosystem. Built using **Flutter**...
 
 The official cross-platform mobile client for the **SmartHome ELIAS** ecosystem. Built using **Flutter**, this application provides full remote control, real-time telemetry monitoring, and secure management of your home automation grid.
 
